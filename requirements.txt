@@ -1,0 +1,12 @@
+# 音频分割工具依赖
+# 本工具主要依赖ffmpeg进行音频处理，Python方面无特殊依赖库
+# 请确保系统已安装ffmpeg并添加到PATH环境变量中
+
+# 使用以下命令安装ffmpeg (macOS):
+# brew install ffmpeg
+
+# 使用以下命令安装ffmpeg (Ubuntu/Debian):
+# sudo apt update && sudo apt install ffmpeg
+
+# 使用以下命令安装ffmpeg (Windows):
+# 从 https://www.gyan.dev/ffmpeg/builds/ 下载并安装
