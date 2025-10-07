@@ -12,7 +12,9 @@ class ConfigManager:
             "segment_duration": 30,
             "advanced_processing": True,
             "output_folder": "",
-            "window_geometry": "650x500"
+            "output_format": "WAV",  # 默认输出格式
+            "transition_sound": "",  # 过渡音效文件路径
+            "window_geometry": "650x520"
         }
         self.config = self.load_config()
     

@@ -5,7 +5,7 @@ import subprocess
 import threading
 import webbrowser
 import platform
-from audio_processor import process_audio_file, check_ffmpeg_available
+from audio_processor import process_audio_file, check_ffmpeg_available, SUPPORTED_FORMATS
 from config_manager import ConfigManager
 
 
@@ -28,6 +28,10 @@ class AudioSplitterApp:
         self.advanced_processing = tk.BooleanVar(value=self.config_manager.get("advanced_processing", True))
         # 输出文件夹路径
         self.output_folder = tk.StringVar(value=self.config_manager.get("output_folder", ""))
+        # 输出格式
+        self.output_format = tk.StringVar(value=self.config_manager.get("output_format", "WAV"))
+        # 过渡音效文件路径
+        self.transition_sound = tk.StringVar(value=self.config_manager.get("transition_sound", ""))
         # 进度变量
         self.progress_var = tk.DoubleVar()
         self.status_var = tk.StringVar(value="就绪")
@@ -39,7 +43,7 @@ class AudioSplitterApp:
     
     def load_config(self):
         """加载窗口配置"""
-        geometry = self.config_manager.get("window_geometry", "650x500")
+        geometry = self.config_manager.get("window_geometry", "650x520")
         self.root.geometry(geometry)
     
     def save_config(self):
@@ -49,6 +53,8 @@ class AudioSplitterApp:
             "segment_duration": self.segment_duration.get(),
             "advanced_processing": self.advanced_processing.get(),
             "output_folder": self.output_folder.get(),
+            "output_format": self.output_format.get(),
+            "transition_sound": self.transition_sound.get(),
             "window_geometry": self.root.geometry()
         }
         self.config_manager.update(config_updates)
@@ -86,19 +92,34 @@ class AudioSplitterApp:
         ttk.Entry(duration_frame, textvariable=self.segment_duration, width=10).grid(row=0, column=0, padx=(0, 5))
         ttk.Label(duration_frame, text="秒").grid(row=0, column=1)
         
+        # 输出格式选择
+        ttk.Label(main_frame, text="输出格式:").grid(row=2, column=0, sticky="w", pady=5)
+        format_combo = ttk.Combobox(main_frame, textvariable=self.output_format, 
+                                   values=list(SUPPORTED_FORMATS.keys()), state="readonly", width=15)
+        format_combo.grid(row=2, column=1, sticky="w", pady=5)
+        
+        # 过渡音效文件选择
+        ttk.Label(main_frame, text="过渡音效:").grid(row=3, column=0, sticky="w", pady=5)
+        transition_frame = ttk.Frame(main_frame)
+        transition_frame.grid(row=3, column=1, columnspan=2, sticky="ew", pady=5)
+        transition_frame.columnconfigure(0, weight=1)
+        
+        ttk.Entry(transition_frame, textvariable=self.transition_sound, state="readonly").grid(row=0, column=0, sticky="ew", padx=(0, 5))
+        ttk.Button(transition_frame, text="浏览", command=self.browse_transition_sound).grid(row=0, column=1)
+        
         # 高级处理选项
-        ttk.Checkbutton(main_frame, text="启用高级音频处理", variable=self.advanced_processing).grid(row=2, column=0, columnspan=3, sticky="w", pady=5)
+        ttk.Checkbutton(main_frame, text="启用高级音频处理", variable=self.advanced_processing).grid(row=4, column=0, columnspan=3, sticky="w", pady=5)
         
         # 处理说明
-        ttk.Label(main_frame, text="高级处理包括:", foreground="gray").grid(row=3, column=0, columnspan=3, sticky="w")
-        ttk.Label(main_frame, text="- 智能去除非人声部分", foreground="gray").grid(row=4, column=0, columnspan=3, sticky="w")
-        ttk.Label(main_frame, text="- 高级淡出效果", foreground="gray").grid(row=5, column=0, columnspan=3, sticky="w")
-        ttk.Label(main_frame, text="- 平滑的音频片段结束", foreground="gray").grid(row=6, column=0, columnspan=3, sticky="w")
+        ttk.Label(main_frame, text="高级处理包括:", foreground="gray").grid(row=5, column=0, columnspan=3, sticky="w")
+        ttk.Label(main_frame, text="- 智能去除非人声部分", foreground="gray").grid(row=6, column=0, columnspan=3, sticky="w")
+        ttk.Label(main_frame, text="- 高级淡出和过渡音效", foreground="gray").grid(row=7, column=0, columnspan=3, sticky="w")
+        ttk.Label(main_frame, text="- 平滑的音频片段结束", foreground="gray").grid(row=8, column=0, columnspan=3, sticky="w")
         
         # 输出路径显示
-        ttk.Label(main_frame, text="输出路径:").grid(row=7, column=0, sticky="w", pady=(10, 5))
+        ttk.Label(main_frame, text="输出路径:").grid(row=9, column=0, sticky="w", pady=(10, 5))
         output_frame = ttk.Frame(main_frame)
-        output_frame.grid(row=7, column=1, columnspan=2, sticky="ew", pady=(10, 5))
+        output_frame.grid(row=9, column=1, columnspan=2, sticky="ew", pady=(10, 5))
         output_frame.columnconfigure(0, weight=1)
         
         ttk.Entry(output_frame, textvariable=self.output_folder, state="readonly").grid(row=0, column=0, sticky="ew", padx=(0, 5))
@@ -107,28 +128,28 @@ class AudioSplitterApp:
         
         # 开始处理按钮
         self.start_button = ttk.Button(main_frame, text="开始处理", command=self.start_processing)
-        self.start_button.grid(row=8, column=0, columnspan=3, pady=20)
+        self.start_button.grid(row=10, column=0, columnspan=3, pady=20)
         
         # 进度条
-        ttk.Label(main_frame, text="处理进度:").grid(row=9, column=0, sticky="w", pady=5)
+        ttk.Label(main_frame, text="处理进度:").grid(row=11, column=0, sticky="w", pady=5)
         self.progress_bar = ttk.Progressbar(main_frame, variable=self.progress_var, maximum=100)
-        self.progress_bar.grid(row=9, column=1, columnspan=2, sticky="ew", pady=5)
+        self.progress_bar.grid(row=11, column=1, columnspan=2, sticky="ew", pady=5)
         
         # 状态标签
         self.status_label = ttk.Label(main_frame, textvariable=self.status_var)
-        self.status_label.grid(row=10, column=0, columnspan=3, sticky="ew", pady=5)
+        self.status_label.grid(row=12, column=0, columnspan=3, sticky="ew", pady=5)
         
         # 日志文本框
-        ttk.Label(main_frame, text="处理日志:").grid(row=11, column=0, sticky="wn", pady=5)
+        ttk.Label(main_frame, text="处理日志:").grid(row=13, column=0, sticky="wn", pady=5)
         self.log_text = tk.Text(main_frame, height=12, state="disabled")
         log_scrollbar = ttk.Scrollbar(main_frame, orient=tk.VERTICAL, command=self.log_text.yview)
         self.log_text.configure(yscrollcommand=log_scrollbar.set)
         
-        self.log_text.grid(row=11, column=1, columnspan=1, sticky="nsew", pady=5)
-        log_scrollbar.grid(row=11, column=2, sticky="ns", pady=5)
+        self.log_text.grid(row=13, column=1, columnspan=1, sticky="nsew", pady=5)
+        log_scrollbar.grid(row=13, column=2, sticky="ns", pady=5)
         
         # 配置行权重
-        main_frame.rowconfigure(11, weight=1)
+        main_frame.rowconfigure(13, weight=1)
     
     def browse_folder(self):
         folder_selected = filedialog.askdirectory()
@@ -138,6 +159,17 @@ class AudioSplitterApp:
             if not self.output_folder.get():
                 output_folder = os.path.join(folder_selected, "split_audio")
                 self.output_folder.set(output_folder)
+            # 保存配置
+            self.save_config()
+    
+    def browse_transition_sound(self):
+        """浏览并选择过渡音效文件"""
+        file_selected = filedialog.askopenfilename(
+            title="选择过渡音效文件",
+            filetypes=[("音频文件", "*.wav *.mp3 *.flac *.aac *.ogg *.m4a"), ("所有文件", "*.*")]
+        )
+        if file_selected:
+            self.transition_sound.set(file_selected)
             # 保存配置
             self.save_config()
     
@@ -203,6 +235,8 @@ class AudioSplitterApp:
         try:
             folder_path = self.audio_folder.get()
             duration = self.segment_duration.get()
+            output_format = self.output_format.get()
+            transition_sound = self.transition_sound.get() if self.transition_sound.get() else None
             
             self.status_var.set("正在扫描音频文件...")
             self.root.update()
@@ -241,8 +275,8 @@ class AudioSplitterApp:
                 
                 try:
                     # 处理单个音频文件
-                    segments = self.split_single_audio(input_path, output_folder, file_base_name, duration)
-                    self.log_message(f"  完成分割: {filename} -> {len(segments)} 个片段")
+                    segments = self.split_single_audio(input_path, output_folder, file_base_name, duration, output_format, transition_sound)
+                    self.log_message(f"  完成分割: {filename} -> {len(segments)} 个片段 ({output_format})")
                 except Exception as e:
                     self.log_message(f"处理 {filename} 时出错: {str(e)}")
             
@@ -250,6 +284,7 @@ class AudioSplitterApp:
             self.status_var.set("处理完成")
             self.log_message("所有文件处理完成")
             self.log_message(f"输出文件保存在: {output_folder}")
+            self.log_message(f"输出格式: {output_format}")
             messagebox.showinfo("完成", "音频分割处理已完成")
             
         except Exception as e:
@@ -258,12 +293,12 @@ class AudioSplitterApp:
         finally:
             self.start_button.config(state="normal")
     
-    def split_single_audio(self, input_path, output_folder, file_base_name, segment_duration):
+    def split_single_audio(self, input_path, output_folder, file_base_name, segment_duration, output_format, transition_sound=None):
         """处理单个音频文件"""
-        self.log_message(f"开始处理 {file_base_name}")
+        self.log_message(f"开始处理 {file_base_name} (格式: {output_format})")
         
         # 调用音频处理模块
-        segments = process_audio_file(input_path, output_folder, file_base_name, segment_duration)
+        segments = process_audio_file(input_path, output_folder, file_base_name, segment_duration, output_format, transition_sound)
         
         self.log_message(f"完成处理 {file_base_name}")
         return segments
